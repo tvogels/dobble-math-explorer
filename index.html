@@ -333,14 +333,14 @@
       <p class="section-intro">Choose a prime \(p\). “Modulo \(p\)” below means that numbers wrap back to zero after \(p-1\), just as hours wrap around a clock. The prime condition is what makes every crossing unique.</p>
       <div class="prime-why">
         <div class="prime-copy">
-          <div class="control-label">Why prime?</div>
-          <h3>We must be able to undo every nonzero multiplication.</h3>
-          <p>This is <strong>not</strong> about ordinary lines crossing at integer coordinates. Our grid positions are labels \(0,\ldots,p-1\), and every result is wrapped back into that set.</p>
-          <p>Two cards with different steps meet where</p>
+          <div class="control-label">Prime-sized grids</div>
+          <h3>Prime-sized clocks avoid collisions.</h3>
+          <p>Every grid coordinate is calculated on a clock with \(p\) positions: after \(p-1\), counting continues at zero. A card advances through this wrapped grid by a fixed step \(m\).</p>
+          <p>For two cards with different steps, their shared grid position must satisfy</p>
           <div class="math">\[(m_1-m_2)x\equiv b_2-b_1\pmod p.\]</div>
-          <p>Finding \(x\) means undoing multiplication by \(m_1-m_2\). When \(p\) is prime, every nonzero value has exactly one undo, so the equation has exactly one answer.</p>
-          <p>With \(p=6\), this breaks: \(2x\equiv0\pmod6\) has two answers, \(x=0\) and \(x=3\). The cards \(y=0\) and \(y=2x\) would therefore share two grid symbols.</p>
-          <p class="fermat-note"><strong>The Fermat connection.</strong> Fermat’s little theorem says \(a^{p-1}\equiv1\pmod p\) for nonzero \(a\). Therefore \(a^{p-2}\) undoes multiplication by \(a\). It proves exactly the property we need, although the simpler “no shared factor with a prime” argument is enough here.<sup><a href="#source-3">[3]</a></sup></p>
+          <p>The Dobble rule requires this equation to produce exactly one value of \(x\). When \(p\) is prime, the nonzero difference \(m_1-m_2\) shares no factor with \(p\). Multiplying by that difference therefore rearranges the positions \(0,\ldots,p-1\): no result is duplicated or skipped. The required value occurs exactly once.</p>
+          <p>A composite-sized clock can collapse several positions onto the same result. With \(p=6\), for example, \(2x\equiv0\pmod6\) is true for both \(x=0\) and \(x=3\). The cards \(y=0\) and \(y=2x\) would consequently share two grid symbols instead of one.</p>
+          <p class="fermat-note"><strong>A connection to Fermat’s little theorem.</strong> For prime \(p\) and nonzero \(a\), the theorem gives \(a^{p-1}\equiv1\pmod p\). It follows that multiplying by \(a^{p-2}\) reverses multiplication by \(a\). This is a compact proof of the same no-collision property used by the construction.<sup><a href="#source-3">[3]</a></sup></p>
         </div>
         <div class="prime-demo">
           <div class="control-label">Multiply by 2, then wrap</div>
