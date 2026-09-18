@@ -1,0 +1,652 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A visual, interactive explanation of how to construct mathematically complete Dobble decks.">
+  <title>The mathematics hiding inside Dobble</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body, {delimiters:[{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}]});"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <style>
+    :root {
+      --bg: #101310;
+      --surface: #171b17;
+      --surface-2: #202620;
+      --ink: #f3efe3;
+      --muted: #aab2a6;
+      --line: #374037;
+      --green: #8bcf91;
+      --yellow: #f0c96b;
+      --coral: #ef8f7c;
+      --blue: #7fb8d8;
+      --card: #faf6e9;
+      --card-ink: #20251f;
+      --radius: 18px;
+      --max: 1100px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { overflow-x: hidden; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 17px;
+      line-height: 1.7;
+      text-rendering: optimizeLegibility;
+    }
+    a { color: var(--green); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+    a:hover { color: #b4e7b8; }
+    button, select { font: inherit; }
+    button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid var(--yellow); outline-offset: 3px; }
+    code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    pre { max-width: 100%; overflow-x: auto; }
+    table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .katex-display { overflow-x: auto; overflow-y: hidden; padding: .25rem 0; }
+    svg { max-width: 100%; height: auto; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      background: rgba(16,19,16,.92);
+      backdrop-filter: blur(12px);
+    }
+    .topbar-inner {
+      width: min(var(--max), calc(100% - 32px));
+      min-height: 58px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .brand { font-size: .9rem; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+    .nav { display: flex; gap: 18px; font-size: .88rem; }
+    .nav a { color: var(--muted); text-decoration: none; }
+    .nav a:hover { color: var(--ink); }
+
+    main { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    .hero {
+      min-height: 76vh;
+      display: grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap: clamp(36px, 7vw, 90px);
+      align-items: center;
+      padding: 90px 0 72px;
+    }
+    .eyebrow { color: var(--green); font-size: .8rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    h1, h2, h3 { line-height: 1.12; text-wrap: balance; }
+    h1 { margin: 14px 0 24px; font-family: Georgia, "Times New Roman", serif; font-size: clamp(3rem, 7vw, 6.7rem); font-weight: 500; letter-spacing: -.045em; }
+    h2 { margin: 0 0 20px; font-family: Georgia, "Times New Roman", serif; font-size: clamp(2rem, 4vw, 3.5rem); font-weight: 500; letter-spacing: -.025em; }
+    h3 { margin: 0 0 10px; font-size: 1.12rem; }
+    .lede { max-width: 670px; color: #d1d7cf; font-size: clamp(1.08rem, 2vw, 1.35rem); line-height: 1.65; }
+    .hero-formula {
+      color: var(--card-ink);
+      background: var(--card);
+      border-radius: 50%;
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      position: relative;
+      box-shadow: 0 28px 80px rgba(0,0,0,.32);
+      transform: rotate(-2deg);
+    }
+    .hero-formula::after {
+      content: "exactly one match";
+      position: absolute;
+      right: -18px;
+      bottom: 12%;
+      color: var(--bg);
+      background: var(--yellow);
+      border: 2px solid var(--bg);
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: .76rem;
+      font-weight: 850;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      transform: rotate(8deg);
+    }
+    .formula-stack { text-align: center; transform: rotate(2deg); }
+    .formula-stack .small { font-size: .84rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #5d685b; }
+    .formula-stack .big { margin: 7px 0; font-family: Georgia, serif; font-size: clamp(2.2rem, 5vw, 4.5rem); letter-spacing: -.04em; }
+    .formula-stack .caption { color: #5d685b; font-size: .95rem; }
+
+    section { padding: 90px 0; border-top: 1px solid var(--line); }
+    .section-intro { max-width: 760px; margin-bottom: 40px; color: #c7cec4; }
+    .marker { color: var(--yellow); font-size: .78rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+
+    .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--line); }
+    .stat { padding: 30px; background: var(--surface); }
+    .stat strong { display: block; color: var(--yellow); font-family: Georgia, serif; font-size: clamp(2rem, 4vw, 3.8rem); line-height: 1; font-weight: 500; }
+    .stat span { display: block; margin-top: 10px; color: var(--muted); font-size: .92rem; }
+
+    .explorer-shell { border: 1px solid var(--line); border-radius: 24px; background: var(--surface); overflow: hidden; }
+    .explorer-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+    .control-group { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; max-width: 100%; }
+    .control-label { color: var(--muted); font-size: .8rem; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+    .p-button {
+      min-width: 44px;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--ink);
+      background: transparent;
+      cursor: pointer;
+      font-weight: 800;
+    }
+    .p-button:hover { border-color: var(--green); }
+    .p-button.active { color: #101610; border-color: var(--green); background: var(--green); }
+    select { min-height: 44px; width: min(250px, 100%); max-width: 100%; padding: 8px 34px 8px 12px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: #111511; }
+    .explorer-grid { display: grid; grid-template-columns: minmax(340px, 1.1fr) minmax(300px, .9fr); min-height: 490px; }
+    .plot-wrap { min-width: 0; padding: 22px; border-right: 1px solid var(--line); }
+    .plot-scroller { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    #gridPlot { display: block; width: 100%; min-width: 560px; }
+    .scroll-hint { display: none; margin: 8px 0 0; color: var(--muted); font-size: .76rem; }
+    .pair-panel { padding: 28px; background: var(--surface-2); }
+    .match-result { margin: 6px 0 24px; }
+    .match-result .match-symbol { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 7px 12px; border-radius: 999px; color: #191d18; background: var(--yellow); font-weight: 850; }
+    .card-stack { display: grid; gap: 18px; }
+    .playing-card { color: var(--card-ink); background: var(--card); border-radius: 22px; padding: 19px; box-shadow: 0 10px 26px rgba(0,0,0,.19); }
+    .playing-card-head { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 13px; font-size: .82rem; font-weight: 800; }
+    .symbol-list { display: flex; flex-wrap: wrap; gap: 8px; }
+    .symbol-chip { display: inline-grid; place-items: center; min-width: 42px; min-height: 42px; padding: 5px 9px; border: 1.5px solid #bbc1b7; border-radius: 50%; font-size: .76rem; font-weight: 800; }
+    .symbol-chip.common { color: #151915; border-color: #d5ab42; background: var(--yellow); box-shadow: 0 0 0 4px rgba(240,201,107,.24); }
+    .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; color: var(--muted); font-size: .79rem; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .dot-key { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+    .recipe { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; counter-reset: recipe; }
+    .step { position: relative; min-width: 0; min-height: 190px; padding: 28px 28px 28px 78px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .step::before { counter-increment: recipe; content: counter(recipe); position: absolute; left: 24px; top: 27px; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; color: var(--bg); background: var(--green); font-weight: 900; }
+    .step p { margin: 0; color: var(--muted); }
+    .step .math { max-width: 100%; margin-top: 12px; color: var(--ink); overflow-x: auto; }
+
+    .proof-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .proof-item { padding: 24px; border-top: 2px solid var(--green); background: var(--surface); }
+    .proof-item p { margin: 0; color: var(--muted); }
+    .proof-item:last-child { grid-column: 1 / -1; border-color: var(--yellow); }
+
+    .bound-box { display: grid; grid-template-columns: .75fr 1.25fr; gap: 36px; align-items: center; padding: clamp(28px, 5vw, 56px); border-radius: 24px; color: var(--card-ink); background: var(--card); }
+    .bound-number { text-align: center; }
+    .bound-number .katex { font-size: clamp(1.65rem, 4vw, 3.1rem); }
+    .bound-copy p { color: #4f594d; }
+    .bound-copy p:last-child { margin-bottom: 0; }
+
+    .chart-shell { margin-top: 42px; padding: 24px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    #countChart { display: block; width: 100%; min-width: 720px; min-height: 290px; }
+
+    .code-shell { position: relative; border: 1px solid var(--line); border-radius: var(--radius); background: #0b0e0b; overflow: hidden; }
+    .code-head { display: flex; align-items: center; justify-content: space-between; padding: 11px 16px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: .8rem; }
+    .copy-button { min-height: 38px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: transparent; cursor: pointer; }
+    .copy-button:hover { border-color: var(--green); }
+    pre { margin: 0; padding: 22px; color: #d8e1d6; font-size: .84rem; line-height: 1.65; }
+    .kw { color: #ef8f7c; } .fn { color: #8bcf91; } .st { color: #f0c96b; } .cm { color: #788176; }
+
+    .caveat { display: grid; grid-template-columns: .7fr 1.3fr; gap: 44px; }
+    .orders { display: grid; gap: 10px; align-content: start; }
+    .order { display: grid; grid-template-columns: 65px 1fr; gap: 14px; align-items: center; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+    .order strong { font-family: Georgia, serif; font-size: 1.6rem; color: var(--yellow); }
+    .order span { color: var(--muted); font-size: .9rem; }
+    .order.open strong { color: var(--blue); }
+    .order.no strong { color: var(--coral); }
+
+    footer { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; padding: 48px 0 70px; border-top: 1px solid var(--line); color: var(--muted); font-size: .88rem; }
+    .sources { display: grid; gap: 10px; margin-top: 20px; }
+    .source { padding-left: 34px; text-indent: -34px; }
+
+    @media (max-width: 840px) {
+      .hero { grid-template-columns: 1fr; min-height: auto; padding-top: 68px; }
+      .hero-formula { width: min(470px, 92%); margin: 0 auto; }
+      .hero-formula::after { right: 0; }
+      .explorer-grid, .bound-box, .caveat { grid-template-columns: 1fr; }
+      .plot-wrap { border-right: 0; border-bottom: 1px solid var(--line); }
+      .recipe, .proof-grid { grid-template-columns: minmax(0, 1fr); }
+      .proof-item:last-child { grid-column: auto; }
+    }
+    @media (max-width: 620px) {
+      body { font-size: 16px; }
+      .nav { display: none; }
+      h1 { font-size: clamp(2.75rem, 15vw, 4.5rem); }
+      section { padding: 68px 0; }
+      .stat-row { grid-template-columns: 1fr; }
+      .stat { display: grid; grid-template-columns: 90px 1fr; align-items: center; gap: 18px; }
+      .stat span { margin: 0; }
+      .explorer-controls { align-items: flex-start; flex-direction: column; }
+      .explorer-grid { display: block; min-height: 0; }
+      .plot-wrap, .pair-panel { padding: 18px; }
+      .step { padding-left: 68px; }
+      .step::before { left: 18px; }
+      .hero-formula::after { right: -5px; }
+      .scroll-hint { display: block; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">Dobble, constructed</div>
+      <nav class="nav" aria-label="Page sections">
+        <a href="#explorer">Explorer</a>
+        <a href="#recipe">Recipe</a>
+        <a href="#proof">Proof</a>
+        <a href="#code">Code</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" style="border-top:0">
+      <div>
+        <div class="eyebrow">An interactive construction</div>
+        <h1>Every pair.<br>One match.</h1>
+        <p class="lede">Dobble’s apparent chaos comes from a small wrapped grid. Build the grid, add one symbol for each direction, and the matching rule emerges automatically.</p>
+      </div>
+      <div class="hero-formula" aria-label="The main Dobble formula">
+        <div class="formula-stack">
+          <div class="small">symbols per card</div>
+          <div class="big">\(s=p+1\)</div>
+          <div class="small">cards and symbols</div>
+          <div class="big">\(N=p^2+p+1\)</div>
+          <div class="caption">Choose a prime number \(p\).</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="overview">
+      <div class="marker">The complete classic deck</div>
+      <h2>Eight symbols imply fifty-seven cards.</h2>
+      <p class="section-intro">Set \(p=7\). The construction produces a perfectly balanced deck. The standard 55-card edition removes two of the 57 mathematical cards; deleting cards preserves the one-match rule.</p>
+      <div class="stat-row">
+        <div class="stat"><strong>57</strong><span>cards in the complete mathematical deck</span></div>
+        <div class="stat"><strong>57</strong><span>different symbols in the complete symbol pool</span></div>
+        <div class="stat"><strong>8</strong><span>symbols on every card—and appearances of every symbol</span></div>
+      </div>
+    </section>
+
+    <section id="explorer">
+      <div class="marker">Live construction</div>
+      <h2>Pick two cards. The shared symbol is forced.</h2>
+      <p class="section-intro"><strong>G(x,y)</strong> names the grid position at column \(x\), row \(y\). In <strong>C(m,b)</strong>, \(m\) is the vertical step taken per column and \(b\) is the starting row. <strong>V</strong> means vertical; <strong>H</strong> is the direction-only card. Change the deck size or card pair and watch the unique shared position move.</p>
+
+      <div class="explorer-shell">
+        <div class="explorer-controls">
+          <div class="control-group" aria-label="Choose prime p">
+            <span class="control-label">Prime p</span>
+            <button class="p-button" data-p="2" aria-pressed="false">2</button>
+            <button class="p-button active" data-p="3" aria-pressed="true">3</button>
+            <button class="p-button" data-p="5" aria-pressed="false">5</button>
+            <button class="p-button" data-p="7" aria-pressed="false">7</button>
+          </div>
+          <div class="control-group">
+            <label class="control-label" for="cardA">Card A</label>
+            <select id="cardA"></select>
+          </div>
+          <div class="control-group">
+            <label class="control-label" for="cardB">Card B</label>
+            <select id="cardB"></select>
+          </div>
+        </div>
+        <div class="explorer-grid">
+          <div class="plot-wrap">
+            <div class="plot-scroller"><svg id="gridPlot" viewBox="0 0 620 470" role="img" aria-label="Selected positions for two Dobble cards"></svg></div>
+            <p class="scroll-hint">Swipe horizontally to inspect the full diagram.</p>
+            <div class="legend">
+              <span><i class="dot-key" style="background:var(--green);border-radius:50%"></i> card A · circle</span>
+              <span><i class="dot-key" style="background:var(--coral);border-radius:1px;transform:rotate(45deg)"></i> card B · diamond</span>
+              <span><i class="dot-key" style="background:var(--yellow);clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 94%,50% 72%,21% 94%,32% 57%,2% 35%,39% 35%)"></i> shared · star</span>
+            </div>
+          </div>
+          <aside class="pair-panel">
+            <div class="control-label">Unique shared symbol</div>
+            <div class="match-result" aria-live="polite"><span class="match-symbol" id="matchSymbol">—</span></div>
+            <div class="card-stack">
+              <div class="playing-card"><div class="playing-card-head"><span>Card A</span><span id="labelA"></span></div><div class="symbol-list" id="symbolsA"></div></div>
+              <div class="playing-card"><div class="playing-card-head"><span>Card B</span><span id="labelB"></span></div><div class="symbol-list" id="symbolsB"></div></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section id="recipe">
+      <div class="marker">The recipe</div>
+      <h2>Four steps, using ordinary clock arithmetic.</h2>
+      <p class="section-intro">Choose a prime \(p\). “Modulo \(p\)” below means that numbers wrap back to zero after \(p-1\), just as hours wrap around a clock.</p>
+      <div class="recipe">
+        <article class="step">
+          <h3>Create the grid symbols</h3>
+          <p>Make one symbol for each position in a \(p\times p\) grid.</p>
+          <div class="math">\[G(x,y),\qquad 0\le x,y&lt;p\]</div>
+        </article>
+        <article class="step">
+          <h3>Add direction symbols</h3>
+          <p>Add one symbol for each wrapped slope, plus a vertical direction.</p>
+          <div class="math">\[D(0),\ldots,D(p-1),D(V)\]</div>
+        </article>
+        <article class="step">
+          <h3>Build the sloping cards</h3>
+          <p>For every choice of \(m\) and \(b\), take one point in every grid column and add its direction.</p>
+          <div class="math">\[C(m,b)=\{G(x,(mx+b)\bmod p)\mid x=0,\ldots,p-1\}\cup\{D(m)\},\quad 0\le m,b&lt;p\]</div>
+        </article>
+        <article class="step">
+          <h3>Close the pattern</h3>
+          <p>Add \(p\) vertical cards. Finish with one card containing all direction symbols.</p>
+          <div class="math">\[V(a)=\{G(a,y)\mid y=0,\ldots,p-1\}\cup\{D(V)\},\quad 0\le a&lt;p\]</div>
+          <div class="math">\[H=\{D(0),\ldots,D(p-1),D(V)\}\]</div>
+        </article>
+      </div>
+    </section>
+
+    <section id="proof">
+      <div class="marker">Why it works</div>
+      <h2>There are only five cases.</h2>
+      <div class="proof-grid">
+        <article class="proof-item"><h3>Same direction</h3><p>Two cards with the same \(m\) never meet on the grid. They share exactly their direction symbol \(D(m)\).</p></article>
+        <article class="proof-item"><h3>Different directions</h3><p>A crossing must satisfy \((m_1-m_2)x=b_2-b_1\). Because \(p\) is prime, as \(x\) runs through the wrapped values, the left side takes every value exactly once. So there is exactly one crossing.</p></article>
+        <article class="proof-item"><h3>Sloping and vertical</h3><p>The vertical card fixes \(x=a\). This forces one shared grid symbol: \(G(a,ma+b\bmod p)\).</p></article>
+        <article class="proof-item"><h3>Two vertical cards</h3><p>Their grid columns are separate, but both carry \(D(V)\). That is their one match.</p></article>
+        <article class="proof-item"><h3>The final direction card</h3><p>It contains no grid symbols. It meets every previous card at exactly that card’s direction symbol.</p></article>
+      </div>
+    </section>
+
+    <section id="bound">
+      <div class="marker">The ceiling</div>
+      <h2>If no symbol appears everywhere, then \(N\le s^2-s+1\).</h2>
+      <div class="bound-box">
+        <div class="bound-number">\[\boxed{N\le s^2-s+1}\]</div>
+        <div class="bound-copy">
+          <p>Exclude the boring case where one symbol appears on every card. Then any symbol can occur on at most \(s\) cards: a card without that symbol has only \(s\) different ways to meet those cards.</p>
+          <p>Now choose one card. Each of its \(s\) symbols can connect it to at most \(s-1\) other cards. Therefore \(N-1\le s(s-1)\). The prime-\(p\) construction reaches this bound exactly.</p>
+        </div>
+      </div>
+      <div class="chart-shell">
+        <div class="control-label">Card-count upper bound—not always achievable</div>
+        <p class="scroll-hint">Swipe horizontally to inspect the full chart.</p>
+        <svg id="countChart" viewBox="0 0 920 310" role="img" aria-label="Card-count upper bound by symbols per card; some values are not achievable"></svg>
+      </div>
+    </section>
+
+    <section id="code">
+      <div class="marker">Executable construction</div>
+      <h2>Generate—and verify—the complete deck.</h2>
+      <p class="section-intro">The assertions check the count, card size, symbol frequency and every pairwise match. Replace the generated names with arbitrary pictures afterwards.</p>
+      <div class="code-shell">
+        <div class="code-head"><span>Python 3.11 · fully typed</span><button class="copy-button" id="copyCode">Copy</button></div>
+        <p class="scroll-hint" style="padding:0 16px">Swipe horizontally to read long lines.</p>
+        <pre><code id="pythonCode"><span class="kw">from</span> itertools <span class="kw">import</span> combinations
+
+
+def <span class="fn">is_prime</span>(p: int) -&gt; bool:
+    <span class="kw">if</span> p &lt; 2:
+        <span class="kw">return</span> False
+    divisor = 2
+    <span class="kw">while</span> divisor * divisor &lt;= p:
+        <span class="kw">if</span> p % divisor == 0:
+            <span class="kw">return</span> False
+        divisor += 1
+    <span class="kw">return</span> True
+
+
+def <span class="fn">dobble</span>(p: int) -&gt; list[frozenset[str]]:
+    <span class="kw">if not</span> is_prime(p):
+        <span class="kw">raise</span> ValueError(<span class="st">"This simple recipe requires a prime p"</span>)
+
+    cards: list[frozenset[str]] = []
+
+    <span class="cm"># Wrapped lines.</span>
+    <span class="kw">for</span> m <span class="kw">in</span> range(p):
+        <span class="kw">for</span> b <span class="kw">in</span> range(p):
+            card = {f<span class="st">"G({x},{(m*x+b) % p})"</span> <span class="kw">for</span> x <span class="kw">in</span> range(p)}
+            card.add(f<span class="st">"D({m})"</span>)
+            cards.append(frozenset(card))
+
+    <span class="cm"># Vertical cards.</span>
+    <span class="kw">for</span> a <span class="kw">in</span> range(p):
+        card = {f<span class="st">"G({a},{y})"</span> <span class="kw">for</span> y <span class="kw">in</span> range(p)}
+        card.add(<span class="st">"D(vertical)"</span>)
+        cards.append(frozenset(card))
+
+    directions = {f<span class="st">"D({m})"</span> <span class="kw">for</span> m <span class="kw">in</span> range(p)}
+    directions.add(<span class="st">"D(vertical)"</span>)
+    cards.append(frozenset(directions))
+
+    expected = p*p + p + 1
+    symbols: set[str] = set()
+    <span class="kw">for</span> card <span class="kw">in</span> cards:
+        symbols.update(card)
+
+    <span class="kw">assert</span> len(cards) == len(symbols) == expected
+    <span class="kw">assert</span> all(len(card) == p + 1 <span class="kw">for</span> card <span class="kw">in</span> cards)
+    <span class="kw">assert</span> all(len(a &amp; b) == 1 <span class="kw">for</span> a, b <span class="kw">in</span> combinations(cards, 2))
+    <span class="kw">assert</span> all(sum(s <span class="kw">in</span> c <span class="kw">for</span> c <span class="kw">in</span> cards) == p + 1 <span class="kw">for</span> s <span class="kw">in</span> symbols)
+    <span class="kw">return</span> cards
+
+
+deck = dobble(7)  <span class="cm"># 57 cards, 8 symbols each</span></code></pre>
+      </div>
+    </section>
+
+    <section id="limits">
+      <div class="marker">A surprising limit</div>
+      <h2>The count pattern does not guarantee the next deck exists.</h2>
+      <div class="caveat">
+        <div class="orders">
+          <div class="order no"><strong>6</strong><span>Impossible: no complete 43-card pattern.<sup><a href="#source-2">[2]</a></sup></span></div>
+          <div class="order no"><strong>10</strong><span>Impossible: no complete 111-card pattern.<sup><a href="#source-2">[2]</a></sup></span></div>
+          <div class="order open"><strong>12</strong><span>Open: nobody knows whether the 157-card pattern exists.<sup><a href="#source-2">[2]</a></sup></span></div>
+        </div>
+        <div>
+          <p>The plain wrapped-grid recipe works when \(p\) is prime. A more elaborate version also works when \(p\) is a power of one prime—for example \(4=2^2\), \(8=2^3\), or \(9=3^2\).</p>
+          <p>But not every value works. The count grows by \(2s\), but that arithmetic does not construct the next deck.</p>
+          <p>The smallest unresolved case is \(p=12\): 13 symbols per card and 157 cards. This is a genuine open problem, not merely a missing construction.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <strong>Sources</strong>
+    <div class="sources">
+      <div class="source">[1] Burkard Polster, <a href="https://www.qedcat.com/articles/intersectiongame.pdf">“The Intersection Game,” Math Horizons 22(4), 2015</a>.</div>
+      <div class="source" id="source-2">[2] Eric W. Weisstein, <a href="https://mathworld.wolfram.com/ProjectivePlane.html">“Projective Plane,” Wolfram MathWorld</a> — includes the order-10 nonexistence result and the unresolved order-12 case.</div>
+    </div>
+  </footer>
+
+  <script>
+    const colors = { green: "#8bcf91", coral: "#ef8f7c", yellow: "#f0c96b", blue: "#7fb8d8", muted: "#aab2a6", line: "#374037", ink: "#f3efe3" };
+    let currentP = 3;
+    let deck = [];
+
+    function gridSymbol(x, y) { return `G(${x},${y})`; }
+
+    function makeDeck(p) {
+      const cards = [];
+      for (let m = 0; m < p; m++) {
+        for (let b = 0; b < p; b++) {
+          const symbols = d3.range(p).map(x => gridSymbol(x, (m * x + b) % p));
+          symbols.push(`D(${m})`);
+          cards.push({ kind: "slope", m, b, label: `C(${m},${b})`, symbols });
+        }
+      }
+      for (let a = 0; a < p; a++) {
+        const symbols = d3.range(p).map(y => gridSymbol(a, y));
+        symbols.push("D(V)");
+        cards.push({ kind: "vertical", a, label: `V(${a})`, symbols });
+      }
+      const symbols = d3.range(p).map(m => `D(${m})`);
+      symbols.push("D(V)");
+      cards.push({ kind: "horizon", label: "H", symbols });
+      return cards;
+    }
+
+    function optionLabel(card) {
+      if (card.kind === "slope") return `${card.label} · step ${card.m}, start ${card.b}`;
+      if (card.kind === "vertical") return `${card.label} · x = ${card.a}`;
+      return "H · all directions";
+    }
+
+    function populateSelectors() {
+      deck = makeDeck(currentP);
+      const selects = [d3.select("#cardA"), d3.select("#cardB")];
+      selects.forEach(select => {
+        select.selectAll("option").data(deck).join("option")
+          .attr("value", (_, i) => i)
+          .text(optionLabel);
+      });
+      selects[0].property("value", 0);
+      selects[1].property("value", Math.min(currentP, deck.length - 1));
+      updateExplorer();
+    }
+
+    function symbolSet(card) { return new Set(card.symbols); }
+    function commonSymbol(a, b) { return a.symbols.find(symbol => symbolSet(b).has(symbol)); }
+
+    function renderChips(selector, card, common) {
+      d3.select(selector).selectAll("span").data(card.symbols).join("span")
+        .attr("class", symbol => `symbol-chip${symbol === common ? " common" : ""}`)
+        .text(symbol => symbol.replace("vertical", "V"));
+    }
+
+    function pointsFor(card) {
+      return card.symbols.filter(s => s.startsWith("G")).map(s => {
+        const match = /G\((\d+),(\d+)\)/.exec(s);
+        return { x: Number(match[1]), y: Number(match[2]), symbol: s };
+      });
+    }
+
+    function drawGrid(cardA, cardB, common) {
+      const svg = d3.select("#gridPlot");
+      svg.selectAll("*").remove();
+      const width = 620, height = 470;
+      const margin = { left: 78, right: 48, top: 54, bottom: 70 };
+      const side = Math.min(width - margin.left - margin.right, height - margin.top - margin.bottom);
+      const x = d3.scalePoint().domain(d3.range(currentP)).range([margin.left, margin.left + side]).padding(.35);
+      const y = d3.scalePoint().domain(d3.range(currentP)).range([margin.top + side, margin.top]).padding(.35);
+
+      svg.attr("aria-label", `Selected positions for ${cardA.label} and ${cardB.label}; shared symbol ${common}`);
+      svg.append("text").attr("x", 20).attr("y", 24).attr("fill", colors.muted).attr("font-size", 13)
+        .text(`Selected positions in a ${currentP} × ${currentP} wrapped grid`);
+
+      const grid = [];
+      for (let gx = 0; gx < currentP; gx++) for (let gy = 0; gy < currentP; gy++) grid.push({ x: gx, y: gy, symbol: gridSymbol(gx, gy) });
+      const setA = symbolSet(cardA), setB = symbolSet(cardB);
+
+      svg.append("g").selectAll("line.v").data(d3.range(currentP)).join("line")
+        .attr("x1", d => x(d)).attr("x2", d => x(d)).attr("y1", margin.top).attr("y2", margin.top + side)
+        .attr("stroke", colors.line).attr("stroke-width", 1);
+      svg.append("g").selectAll("line.h").data(d3.range(currentP)).join("line")
+        .attr("y1", d => y(d)).attr("y2", d => y(d)).attr("x1", margin.left).attr("x2", margin.left + side)
+        .attr("stroke", colors.line).attr("stroke-width", 1);
+
+      svg.append("g").selectAll("circle.halo").data(grid.filter(d => setA.has(d.symbol) || setB.has(d.symbol))).join("circle")
+        .attr("class", "halo")
+        .attr("cx", d => x(d.x)).attr("cy", d => y(d.y))
+        .attr("r", d => d.symbol === common ? 18 : 13)
+        .attr("fill", d => d.symbol === common ? colors.yellow : setA.has(d.symbol) && setB.has(d.symbol) ? colors.yellow : setA.has(d.symbol) ? colors.green : colors.coral)
+        .attr("opacity", .34);
+
+      svg.append("g").selectAll("circle.point").data(grid).join("circle")
+        .attr("class", "point")
+        .attr("cx", d => x(d.x)).attr("cy", d => y(d.y)).attr("r", 4.5)
+        .attr("fill", colors.muted)
+        .attr("stroke", "#101310").attr("stroke-width", 2);
+
+      const selected = grid.filter(d => setA.has(d.symbol) || setB.has(d.symbol));
+      svg.append("g").selectAll("path.marker").data(selected).join("path")
+        .attr("class", "marker")
+        .attr("d", d => d3.symbol()
+          .type(d.symbol === common ? d3.symbolStar : setA.has(d.symbol) ? d3.symbolCircle : d3.symbolDiamond)
+          .size(d.symbol === common ? 260 : 145)())
+        .attr("transform", d => `translate(${x(d.x)},${y(d.y)})`)
+        .attr("fill", d => d.symbol === common ? colors.yellow : setA.has(d.symbol) ? colors.green : colors.coral)
+        .attr("stroke", "#101310").attr("stroke-width", 2);
+
+      if (currentP <= 5) {
+        svg.append("g").selectAll("text.point-label").data(grid).join("text")
+          .attr("x", d => x(d.x) + 10).attr("y", d => y(d.y) - 10).attr("fill", colors.muted).attr("font-size", 11)
+          .text(d => `${d.x},${d.y}`);
+      }
+
+      svg.append("g").selectAll("text.x-label").data(d3.range(currentP)).join("text")
+        .attr("x", d => x(d)).attr("y", margin.top + side + 30).attr("text-anchor", "middle").attr("fill", colors.muted).attr("font-size", 12).text(d => `x=${d}`);
+      svg.append("g").selectAll("text.y-label").data(d3.range(currentP)).join("text")
+        .attr("x", margin.left - 22).attr("y", d => y(d) + 4).attr("text-anchor", "end").attr("fill", colors.muted).attr("font-size", 12).text(d => `y=${d}`);
+
+      const directionCommon = common && common.startsWith("D");
+      svg.append("text").attr("x", width / 2).attr("y", height - 16).attr("text-anchor", "middle")
+        .attr("fill", directionCommon ? colors.yellow : colors.muted).attr("font-size", 13).attr("font-weight", directionCommon ? 800 : 500)
+        .text(directionCommon ? `No shared grid point — both cards carry ${common}` : `Unique crossing: ${common}`);
+    }
+
+    function updateExplorer() {
+      let aIndex = Number(d3.select("#cardA").property("value"));
+      let bIndex = Number(d3.select("#cardB").property("value"));
+      if (aIndex === bIndex) {
+        bIndex = (bIndex + 1) % deck.length;
+        d3.select("#cardB").property("value", bIndex);
+      }
+      const a = deck[aIndex], b = deck[bIndex], common = commonSymbol(a, b);
+      d3.select("#matchSymbol").text(common);
+      d3.select("#labelA").text(a.label);
+      d3.select("#labelB").text(b.label);
+      renderChips("#symbolsA", a, common);
+      renderChips("#symbolsB", b, common);
+      drawGrid(a, b, common);
+    }
+
+    d3.selectAll(".p-button").on("click", function() {
+      currentP = Number(this.dataset.p);
+      d3.selectAll(".p-button").classed("active", false).attr("aria-pressed", "false");
+      d3.select(this).classed("active", true).attr("aria-pressed", "true");
+      populateSelectors();
+    });
+    d3.selectAll("#cardA,#cardB").on("change", updateExplorer);
+
+    function drawCountChart() {
+      const values = d3.range(2, 14).map(s => ({ s, n: s * s - s + 1 }));
+      const svg = d3.select("#countChart");
+      const width = 920, height = 310, margin = { top: 28, right: 25, bottom: 54, left: 62 };
+      const x = d3.scaleBand().domain(values.map(d => d.s)).range([margin.left, width - margin.right]).padding(.24);
+      const y = d3.scaleLinear().domain([0, d3.max(values, d => d.n)]).nice().range([height - margin.bottom, margin.top]);
+
+      svg.append("g").attr("transform", `translate(0,${height - margin.bottom})`).call(d3.axisBottom(x).tickFormat(d => d)).call(g => g.select(".domain").attr("stroke", colors.line)).call(g => g.selectAll("text").attr("fill", colors.muted)).call(g => g.selectAll("line").attr("stroke", colors.line));
+      svg.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(y).ticks(5)).call(g => g.select(".domain").remove()).call(g => g.selectAll("text").attr("fill", colors.muted)).call(g => g.selectAll("line").attr("stroke", colors.line));
+
+      svg.append("g").selectAll("rect").data(values).join("rect")
+        .attr("x", d => x(d.s)).attr("width", x.bandwidth()).attr("y", d => y(d.n)).attr("height", d => y(0) - y(d.n))
+        .attr("rx", 4)
+        .attr("fill", d => d.s === 8 ? colors.yellow : [7, 11].includes(d.s) ? colors.coral : d.s === 13 ? colors.blue : colors.green)
+        .attr("opacity", d => d.s === 8 || [7, 11, 13].includes(d.s) ? 1 : .72)
+        .append("title").text(d => `${d.s} symbols per card → at most ${d.n} cards`);
+      svg.append("text").attr("x", width / 2).attr("y", height - 8).attr("text-anchor", "middle").attr("fill", colors.muted).attr("font-size", 12).text("symbols per card, s");
+      svg.append("text").attr("transform", "rotate(-90)").attr("x", -(height / 2)).attr("y", 16).attr("text-anchor", "middle").attr("fill", colors.muted).attr("font-size", 12).text("card-count upper bound");
+      svg.append("text").attr("x", x(8) + x.bandwidth() / 2).attr("y", y(57) - 9).attr("text-anchor", "middle").attr("fill", colors.yellow).attr("font-size", 12).attr("font-weight", 800).text("Dobble: 57");
+      svg.append("text").attr("x", width - margin.right).attr("y", 15).attr("text-anchor", "end").attr("fill", colors.muted).attr("font-size", 11).text("green known · coral impossible · blue unresolved");
+    }
+
+    document.getElementById("copyCode").addEventListener("click", async function() {
+      const text = document.getElementById("pythonCode").innerText;
+      try {
+        await navigator.clipboard.writeText(text);
+        this.textContent = "Copied";
+      } catch (_) {
+        this.textContent = "Select code to copy";
+      }
+      setTimeout(() => { this.textContent = "Copy"; }, 1800);
+    });
+
+    populateSelectors();
+    drawCountChart();
+  </script>
+</body>
+</html>
