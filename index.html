@@ -165,6 +165,15 @@
     .dot-key { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 
     .recipe { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; counter-reset: recipe; }
+    .prime-why { display: grid; grid-template-columns: minmax(0, 1fr); gap: 30px; margin: 0 0 34px; padding: clamp(24px, 4vw, 42px); border: 1px solid var(--line); border-radius: 24px; background: var(--surface-2); }
+    .prime-copy { max-width: 860px; }
+    .prime-copy h3 { margin-bottom: 14px; font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.55rem, 3vw, 2.25rem); font-weight: 500; }
+    .prime-copy p { margin: 0 0 15px; color: #c7cec4; }
+    .prime-copy p:last-child { margin-bottom: 0; }
+    .fermat-note { padding: 14px 16px; border-left: 3px solid var(--yellow); color: var(--muted); background: rgba(240,201,107,.06); }
+    .prime-demo { min-width: 0; }
+    .prime-demo-scroll { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    #primePlot { display: block; width: 100%; min-width: 620px; max-width: 820px; margin: 0 auto; }
     .step { position: relative; min-width: 0; min-height: 190px; padding: 28px 28px 28px 78px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
     .step::before { counter-increment: recipe; content: counter(recipe); position: absolute; left: 24px; top: 27px; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; color: var(--bg); background: var(--green); font-weight: 900; }
     .step p { margin: 0; color: var(--muted); }
@@ -207,7 +216,7 @@
       .hero { grid-template-columns: 1fr; min-height: auto; padding-top: 68px; }
       .hero-formula { width: min(470px, 92%); margin: 0 auto; }
       .hero-formula::after { right: 0; }
-      .explorer-grid, .bound-box, .caveat { grid-template-columns: 1fr; }
+      .explorer-grid, .bound-box, .caveat, .prime-why { grid-template-columns: 1fr; }
       .plot-wrap { border-right: 0; border-bottom: 1px solid var(--line); }
       .recipe, .proof-grid { grid-template-columns: minmax(0, 1fr); }
       .proof-item:last-child { grid-column: auto; }
@@ -321,7 +330,24 @@
     <section id="recipe">
       <div class="marker">The recipe</div>
       <h2>Four steps, using ordinary clock arithmetic.</h2>
-      <p class="section-intro">Choose a prime \(p\). “Modulo \(p\)” below means that numbers wrap back to zero after \(p-1\), just as hours wrap around a clock.</p>
+      <p class="section-intro">Choose a prime \(p\). “Modulo \(p\)” below means that numbers wrap back to zero after \(p-1\), just as hours wrap around a clock. The prime condition is what makes every crossing unique.</p>
+      <div class="prime-why">
+        <div class="prime-copy">
+          <div class="control-label">Why prime?</div>
+          <h3>We must be able to undo every nonzero multiplication.</h3>
+          <p>This is <strong>not</strong> about ordinary lines crossing at integer coordinates. Our grid positions are labels \(0,\ldots,p-1\), and every result is wrapped back into that set.</p>
+          <p>Two cards with different steps meet where</p>
+          <div class="math">\[(m_1-m_2)x\equiv b_2-b_1\pmod p.\]</div>
+          <p>Finding \(x\) means undoing multiplication by \(m_1-m_2\). When \(p\) is prime, every nonzero value has exactly one undo, so the equation has exactly one answer.</p>
+          <p>With \(p=6\), this breaks: \(2x\equiv0\pmod6\) has two answers, \(x=0\) and \(x=3\). The cards \(y=0\) and \(y=2x\) would therefore share two grid symbols.</p>
+          <p class="fermat-note"><strong>The Fermat connection.</strong> Fermat’s little theorem says \(a^{p-1}\equiv1\pmod p\) for nonzero \(a\). Therefore \(a^{p-2}\) undoes multiplication by \(a\). It proves exactly the property we need, although the simpler “no shared factor with a prime” argument is enough here.<sup><a href="#source-3">[3]</a></sup></p>
+        </div>
+        <div class="prime-demo">
+          <div class="control-label">Multiply by 2, then wrap</div>
+          <div class="prime-demo-scroll"><svg id="primePlot" viewBox="0 0 820 390" role="img" aria-label="Comparison of multiplication by two modulo five and modulo six"></svg></div>
+          <p class="scroll-hint">Swipe horizontally to compare the two cases.</p>
+        </div>
+      </div>
       <div class="recipe">
         <article class="step">
           <h3>Create the grid symbols</h3>
@@ -459,6 +485,7 @@ deck = dobble(7)  <span class="cm"># 57 cards, 8 symbols each</span></code></pre
     <div class="sources">
       <div class="source">[1] Burkard Polster, <a href="https://www.qedcat.com/articles/intersectiongame.pdf">“The Intersection Game,” Math Horizons 22(4), 2015</a>.</div>
       <div class="source" id="source-2">[2] Eric W. Weisstein, <a href="https://mathworld.wolfram.com/ProjectivePlane.html">“Projective Plane,” Wolfram MathWorld</a> — includes the order-10 nonexistence result and the unresolved order-12 case.</div>
+      <div class="source" id="source-3">[3] Eric W. Weisstein, <a href="https://mathworld.wolfram.com/FermatsLittleTheorem.html">“Fermat’s Little Theorem,” Wolfram MathWorld</a>.</div>
     </div>
   </footer>
 
@@ -612,6 +639,56 @@ deck = dobble(7)  <span class="cm"># 57 cards, 8 symbols each</span></code></pre
     });
     d3.selectAll("#cardA,#cardB").on("change", updateExplorer);
 
+    function drawPrimeDemo() {
+      const svg = d3.select("#primePlot");
+      const panels = [
+        { p: 5, x: 18, title: "p = 5 · prime", verdict: "every result appears once" },
+        { p: 6, x: 420, title: "p = 6 · composite", verdict: "collisions and gaps" }
+      ];
+
+      for (const panel of panels) {
+        const group = svg.append("g").attr("transform", `translate(${panel.x},18)`);
+        const values = d3.range(panel.p);
+        const links = values.map(input => ({ input, output: (2 * input) % panel.p }));
+        const hitCount = d3.rollup(links, rows => rows.length, row => row.output);
+        const y = d3.scalePoint().domain(values).range([92, 310]).padding(.35);
+        const inputX = 72;
+        const outputX = 292;
+
+        group.append("text").attr("x", 182).attr("y", 18).attr("text-anchor", "middle")
+          .attr("fill", colors.ink).attr("font-size", 18).attr("font-weight", 800).text(panel.title);
+        group.append("text").attr("x", 182).attr("y", 42).attr("text-anchor", "middle")
+          .attr("fill", panel.p === 5 ? colors.green : colors.coral).attr("font-size", 13).text(panel.verdict);
+        group.append("text").attr("x", inputX).attr("y", 72).attr("text-anchor", "middle")
+          .attr("fill", colors.muted).attr("font-size", 12).text("x");
+        group.append("text").attr("x", outputX).attr("y", 72).attr("text-anchor", "middle")
+          .attr("fill", colors.muted).attr("font-size", 12).text("2x, wrapped");
+
+        group.selectAll("line.mapping").data(links).join("line")
+          .attr("x1", inputX + 13).attr("y1", d => y(d.input))
+          .attr("x2", outputX - 13).attr("y2", d => y(d.output))
+          .attr("stroke", d => (hitCount.get(d.output) ?? 0) > 1 ? colors.coral : colors.green)
+          .attr("stroke-width", 2).attr("opacity", .62);
+
+        group.selectAll("circle.input").data(values).join("circle")
+          .attr("cx", inputX).attr("cy", d => y(d)).attr("r", 13)
+          .attr("fill", "#101310").attr("stroke", colors.muted).attr("stroke-width", 1.5);
+        group.selectAll("text.input").data(values).join("text")
+          .attr("x", inputX).attr("y", d => y(d) + 4).attr("text-anchor", "middle")
+          .attr("fill", colors.ink).attr("font-size", 12).text(d => d);
+
+        group.selectAll("circle.output").data(values).join("circle")
+          .attr("cx", outputX).attr("cy", d => y(d)).attr("r", 13)
+          .attr("fill", d => (hitCount.get(d) ?? 0) > 1 ? colors.coral : (hitCount.get(d) ?? 0) === 1 ? colors.green : "#101310")
+          .attr("stroke", d => (hitCount.get(d) ?? 0) === 0 ? colors.muted : "none")
+          .attr("stroke-width", 1.5);
+        group.selectAll("text.output").data(values).join("text")
+          .attr("x", outputX).attr("y", d => y(d) + 4).attr("text-anchor", "middle")
+          .attr("fill", d => (hitCount.get(d) ?? 0) === 0 ? colors.muted : "#101310")
+          .attr("font-size", 12).attr("font-weight", 800).text(d => d);
+      }
+    }
+
     function drawCountChart() {
       const values = d3.range(2, 14).map(s => ({ s, n: s * s - s + 1 }));
       const svg = d3.select("#countChart");
@@ -646,6 +723,7 @@ deck = dobble(7)  <span class="cm"># 57 cards, 8 symbols each</span></code></pre
     });
 
     populateSelectors();
+    drawPrimeDemo();
     drawCountChart();
   </script>
 </body>
